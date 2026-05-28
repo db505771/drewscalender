@@ -61,6 +61,10 @@
 
   <script>
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRo-SarpignS39lDSaIGsV13WyUJOURcyVaRP_mEqY6XfBxby9WA_XCf5AhXi8OcwHDiP4FLqBwMGKw/pub?output=csv";
+    const gameApi =
+  "https://script.google.com/macros/s/AKfycby5tKKny4hqGyG--JQxP4IVe2C8WWGO6sMij6p66MdSmLFVDUn6TbeBbM2L51TdWia_/exec";
+
+let gameData = [];
     let currentDate = new Date();
 
     async function fetchData() {
@@ -69,7 +73,11 @@
       const rows = text.trim().split("\n").slice(1).map(row => row.split(","));
       return rows;
     }
-
+async function fetchGameData() {
+  const res = await fetch(gameApi);
+  gameData = await res.json();
+}
+    
     function getMonthDays(year, month) {
       const date = new Date(year, month, 1);
       const days = [];
@@ -93,6 +101,7 @@
       title.textContent = `${monthName} ${year} Play Calendar`;
 
       const allRows = await fetchData();
+      await fetchGameData();
       const playedDates = new Set();
 
       for (const row of allRows) {
@@ -120,7 +129,7 @@
         if (isCurrentMonth && day.getDate() === today.getDate()) {
           div.classList.add("today");
         }
-
+div.onclick = () => showGames(day);
         calendar.appendChild(div);
       }
     }
@@ -156,7 +165,108 @@
         buildCalendar();
       }
     }
+function showGames(day){
 
+  const existing = document.getElementById("popup");
+
+  if(existing){
+    existing.remove();
+    return;
+  }
+
+  const popup = document.createElement("div");
+
+  popup.id = "popup";
+
+  popup.style.position = "fixed";
+  popup.style.inset = "0";
+  popup.style.background = "rgba(0,0,0,0.7)";
+  popup.style.display = "flex";
+  popup.style.justifyContent = "center";
+  popup.style.alignItems = "center";
+  popup.style.zIndex = "999";
+
+  const box = document.createElement("div");
+
+  box.style.background = "#1a2b3d";
+  box.style.padding = "20px";
+  box.style.borderRadius = "12px";
+  box.style.width = "90%";
+  box.style.maxWidth = "400px";
+  box.style.maxHeight = "70vh";
+  box.style.overflowY = "auto";
+
+  const title = document.createElement("h2");
+
+  title.innerText = day.toLocaleDateString();
+
+  box.appendChild(title);
+
+  const filtered = gameData.filter(g => {
+
+    const d = new Date(g.date);
+
+    return (
+      d.getDate() === day.getDate() &&
+      d.getMonth() === day.getMonth() &&
+      d.getFullYear() === day.getFullYear()
+    );
+  });
+
+  if(filtered.length === 0){
+
+    const none = document.createElement("div");
+
+    none.innerText = "No games found.";
+
+    box.appendChild(none);
+
+  } else {
+
+    filtered.forEach(g => {
+
+      const card = document.createElement("div");
+
+      card.style.display = "flex";
+      card.style.alignItems = "center";
+      card.style.gap = "10px";
+      card.style.marginBottom = "12px";
+      card.style.background = "#24384f";
+      card.style.padding = "10px";
+      card.style.borderRadius = "10px";
+
+      card.innerHTML = `
+        <img
+          src="${g.image}"
+          style="
+            width:60px;
+            height:60px;
+            border-radius:10px;
+            object-fit:cover;
+          "
+        >
+
+        <div>
+          <div style="font-weight:bold;">
+            ${g.name}
+          </div>
+
+          <div style="color:#ccc;font-size:14px;">
+            ${Math.floor(g.minutes/60)}h ${g.minutes%60}m played
+          </div>
+        </div>
+      `;
+
+      box.appendChild(card);
+    });
+  }
+
+  popup.appendChild(box);
+
+  popup.onclick = () => popup.remove();
+
+  document.body.appendChild(popup);
+}
     buildCalendar();
   </script>
 </body>
