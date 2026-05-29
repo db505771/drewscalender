@@ -1,116 +1,332 @@
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTRqMqbCRZdfrIDgdkarWSH7iy3qhwhSCsfjAOcKVYO60m3smkMLMIT8hQWBdmrboORQJGsC3FwmVRq/pub?gid=389737636&single=true&output=csv";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="
+      width=device-width,
+      initial-scale=1.0,
+      maximum-scale=1.0,
+      user-scalable=no
+    "
+  />
 
-// ⚡ 1. This executes INSTANTLY (under 200ms) because it just reads the ready-made cache
-function doGet() {
-  const cache = CacheService.getScriptCache();
-  let cachedData = cache.get("roblox_processed_data");
-  
-  // Fallback if cache expires or is empty
-  if (!cachedData) {
-    cachedData = JSON.stringify(getGamesData());
-    cache.put("roblox_processed_data", cachedData, 21600); // Save for 6 hours
-  }
+  <title>Playtime Calendar</title>
 
-  return ContentService
-    .createTextOutput(cachedData)
-    .setMimeType(ContentService.MimeType.JSON);
-}
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
 
-// ⚡ 2. This will run automatically in the background via a time-driven trigger
-function cacheGamesData() {
-  try {
-    const freshData = JSON.stringify(getGamesData());
-    const cache = CacheService.getScriptCache();
-    cache.put("roblox_processed_data", freshData, 21600); 
-    Logger.log("Cache successfully updated!");
-  } catch(e) {
-    Logger.log("Error updating cache: " + e.toString());
-  }
-}
+      /* Prevent any native scrolling or bounce effects */
+      overflow: hidden; 
 
-// This handles the heavy lifting away from the user's loading screen
-function getGamesData() {
-  const res = UrlFetchApp.fetch(CSV_URL);
-  const text = res.getContentText();
+      background-color: #0f1a2b;
+      color: white;
 
-  const rows = text
-    .trim()
-    .split("\n")
-    .map(r => r.split(",").map(x => x.replace(/"/g, "").trim()))
-    .slice(1);
-
-  const games = {};
-  const uniqueIds = new Set();
-
-  for (const r of rows) {
-    const id = r[0];
-    const mins = Number(r[2]) || 0;
-
-    if (!id) continue;
-    uniqueIds.add(id);
-
-    let date = new Date();
-    if (r[3]) {
-      const parts = r[3].split(" ");
-      if (parts.length >= 2) {
-        const datePart = parts[0].split("/");
-        const timePart = parts[1].split(":");
-        const month = parseInt(datePart[0]) - 1;
-        const day = parseInt(datePart[1]);
-        const year = parseInt(datePart[2]);
-        const hour = parseInt(timePart[0] || 0);
-        const minute = parseInt(timePart[1] || 0);
-        const second = parseInt(timePart[2] || 0);
-
-        date = new Date(year, month, day, hour, minute, second);
-      }
-    }
-
-    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    const gameKey = `${id}_${dateKey}`;
-
-    if (!games[gameKey]) {
-      games[gameKey] = { id, minutes: 0, date };
-    }
-    games[gameKey].minutes += mins;
-  }
-
-  const idArray = Array.from(uniqueIds);
-  const apiMetaData = {};
-
-  if (idArray.length > 0) {
-    try {
-      const idString = idArray.slice(0, 100).join(",");
-      const gameRes = UrlFetchApp.fetch(`https://games.roblox.com/v1/games?universeIds=${idString}`);
-      const gameJson = JSON.parse(gameRes.getContentText());
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
       
-      const thumbRes = UrlFetchApp.fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${idString}&size=512x512&format=Png&isCircular=false`);
-      const thumbJson = JSON.parse(thumbRes.getContentText());
-
-      if (gameJson.data) {
-        gameJson.data.forEach(g => { apiMetaData[g.id] = { name: g.name, image: "" }; });
-      }
-      if (thumbJson.data) {
-        thumbJson.data.forEach(t => { if (apiMetaData[t.targetId]) apiMetaData[t.targetId].image = t.imageUrl || ""; });
-      }
-    } catch (e) {
-      Logger.log("Roblox API Error: " + e.toString());
+      /* Only allow horizontal panning gestures at the CSS level */
+      touch-action: pan-x; 
+      box-sizing: border-box;
     }
-  }
 
-  const sorted = Object.entries(games).sort((a, b) => b[1].minutes - a[1].minutes);
-  const output = [];
+    h1 {
+      margin-bottom: 20px;
+      text-align: center;
+      width: 100%;
+      user-select: none;
+    }
 
-  for (const [key, g] of sorted) {
-    const meta = apiMetaData[g.id] || { name: "Unknown Game", image: "" };
-    output.push({
-      id: g.id,
-      name: meta.name,
-      minutes: g.minutes,
-      date: g.date.toISOString(),
-      image: meta.image
+    .calendar-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(5, 60px); 
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .day {
+      width: 60px; 
+      height: 60px; 
+      background-color: #1a2b3d;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    .day.played {
+      background-color: #1e824c;
+    }
+
+    .day.today {
+      border: 2px solid #00aced;
+    }
+
+    .day span {
+      font-size: 20px; 
+    }
+  </style>
+</head>
+<body>
+  <h1 id="calendar-title">Loading...</h1>
+  <div class="calendar-container">
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRo-SarpignS39lDSaIGsV13WyUJOURcyVaRP_mEqY6XfBxby9WA_XCf5AhXi8OcwHDiP4FLqBwMGKw/pub?gid=363986867&single=true&output=csv";
+    const gameApi = "https://script.google.com/macros/s/AKfycby5tKKny4hqGyG--JQxP4IVe2C8WWGO6sMij6p66MdSmLFVDUn6TbeBbM2L51TdWia_/exec";
+
+    let csvRows = [];
+    let gameData = [];
+    let currentDate = new Date();
+    let isLoading = true;
+    let isPopupOpen = false; // Tracks if a date modal is currently displayed
+
+    // Strictly block all vertical page scrolling gestures
+    window.addEventListener('touchmove', function(e) {
+      if (!isPopupOpen) {
+        // If popup is closed, ensure no vertical layout shifting happens
+        if (Math.abs(e.touches[0].clientY) > Math.abs(e.touches[0].clientX)) {
+          e.preventDefault();
+        }
+      }
+    }, { passive: false });
+
+    async function initData() {
+      try {
+        const [csvRes, apiRes] = await Promise.all([
+          fetch(csvUrl).then(res => res.text()),
+          fetch(gameApi).then(res => res.json())
+        ]);
+
+        csvRows = csvRes.trim().split("\n").slice(1).map(row => row.split(","));
+        gameData = apiRes;
+        
+        isLoading = false;
+        buildCalendar();
+      } catch (e) {
+        document.getElementById("calendar-title").textContent = "Error Loading Data";
+        console.error(e);
+      }
+    }
+
+    function getMonthDays(year, month) {
+      const date = new Date(year, month, 1);
+      const days = [];
+      while (date.getMonth() === month) {
+        days.push(new Date(date));
+        date.setDate(date.getDate() + 1);
+      }
+      return days;
+    }
+
+    function buildCalendar() {
+      if (isLoading) return;
+
+      const calendar = document.getElementById("calendar");
+      const title = document.getElementById("calendar-title");
+
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const today = new Date();
+      const isCurrentMonth = (month === today.getMonth() && year === today.getFullYear());
+      const monthName = currentDate.toLocaleString("default", { month: "long" });
+      
+      title.textContent = `${monthName} ${year}`;
+
+      const playedDates = new Set();
+      for (const row of csvRows) {
+        const rawDate = row[0];
+        const minutesPlayed = parseInt(row[4]) || 0; 
+        const date = new Date(rawDate);
+        
+        if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
+          playedDates.add(date.getDate());
+        }
+      }
+
+      const days = getMonthDays(year, month);
+      let htmlString = "";
+
+      days.forEach(day => {
+        const dateNum = day.getDate();
+        let classes = "day";
+
+        if (playedDates.has(dateNum)) {
+          classes += " played";
+        }
+        if (isCurrentMonth && dateNum === today.getDate()) {
+          classes += " today";
+        }
+
+        htmlString += `
+          <div class="${classes}" onclick="showGamesByDay(${dateNum})">
+            ${dateNum}<span></span>
+          </div>
+        `;
+      });
+
+      calendar.innerHTML = htmlString;
+    }
+
+    function showGamesByDay(dateNum) {
+      const selectedDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), dateNum);
+      showGames(selectedDay);
+    }
+
+    // Swipe handling
+    let touchStartX = 0;
+    document.addEventListener("touchstart", (e) => { 
+      if (isPopupOpen) return; // Disable swipe start if popup is open
+      touchStartX = e.touches[0].clientX; 
     });
-  }
+    
+    document.addEventListener("touchend", (e) => { 
+      if (isPopupOpen) return; // Disable swipe end if popup is open
+      handleSwipe(touchStartX, e.changedTouches[0].clientX); 
+    });
+    
+    document.addEventListener("mousedown", (e) => { 
+      if (isPopupOpen) return; 
+      touchStartX = e.clientX; 
+    });
+    
+    document.addEventListener("mouseup", (e) => { 
+      if (isPopupOpen) return; 
+      handleSwipe(touchStartX, e.clientX); 
+    });
 
-  return output;
-}
+    function handleSwipe(startX, endX) {
+      const diff = startX - endX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        } else {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+        }
+        buildCalendar();
+      }
+    }
+
+    function showGames(day) {
+      const existing = document.getElementById("popup");
+      if (existing) {
+        existing.remove();
+        isPopupOpen = false;
+        return;
+      }
+
+      // 🔥 Lock swiping and touch navigation
+      isPopupOpen = true;
+
+      const popup = document.createElement("div");
+      popup.id = "popup";
+      popup.style.position = "fixed";
+      popup.style.inset = "0";
+      popup.style.background = "rgba(0,0,0,0.7)";
+      popup.style.display = "flex";
+      popup.style.justifyContent = "center";
+      popup.style.alignItems = "center";
+      popup.style.zIndex = "999";
+      
+      // Allow vertical scroll inside the popup list itself if needed
+      popup.style.touchAction = "pan-y"; 
+
+      const box = document.createElement("div");
+      box.style.background = "#1a2b3d";
+      box.style.padding = "20px";
+      box.style.borderRadius = "12px";
+      box.style.width = "90%";
+      box.style.maxWidth = "400px";
+      box.style.maxHeight = "70vh";
+      box.style.overflowY = "auto";
+
+      box.onclick = (e) => e.stopPropagation();
+
+      const title = document.createElement("h2");
+      title.innerText = day.toLocaleDateString();
+      box.appendChild(title);
+
+      const filtered = gameData.filter(g => {
+        const d = new Date(g.date);
+        return (
+          d.getDate() === day.getDate() &&
+          d.getMonth() === day.getMonth() &&
+          d.getFullYear() === day.getFullYear() &&
+          g.minutes > 0
+        );
+      });
+
+      if (filtered.length === 0) {
+        const none = document.createElement("div");
+        none.innerText = "No games found.";
+        box.appendChild(none);
+      } else {
+        filtered.forEach(g => {
+          const card = document.createElement("div");
+          card.style.display = "flex";
+          card.style.alignItems = "center";
+          card.style.gap = "10px";
+          card.style.marginBottom = "12px";
+          card.style.background = "#24384f";
+          card.style.padding = "10px";
+          card.style.borderRadius = "10px";
+
+          card.innerHTML = `
+            <img
+              src="${g.image}"
+              style="
+                width:60px;
+                height:60px;
+                border-radius:10px;
+                object-fit:cover;
+              "
+            >
+            <div>
+              <div style="font-weight:bold;">
+                ${g.name}
+              </div>
+              <div style="color:#ccc; font-size:14px;">
+                ${Math.floor(g.minutes / 60)}h ${g.minutes % 60}m played
+              </div>
+            </div>
+          `;
+          box.appendChild(card);
+        });
+      }
+
+      popup.appendChild(box);
+      
+      // 🔥 Restore swiping when clicking background to close out
+      popup.onclick = () => {
+        popup.remove();
+        isPopupOpen = false;
+      };
+      
+      document.body.appendChild(popup);
+    }
+
+    initData();
+  </script>
+</body>
+</html>
