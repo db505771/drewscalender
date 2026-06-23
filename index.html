@@ -156,29 +156,14 @@
 
 const playedDates = new Set();
 for (const row of csvRows) {
-  if (!row[4]) continue; // Skip empty rows Safely
-  
-  // 1. Manually parse the "M/D/YYYY H:MM:S" layout from Column E (row[4])
-  const parts = row[4].trim().split(" ");
-  if (parts.length >= 2) {
-    const datePart = parts[0].split("/");
-    const monthPart = parseInt(datePart[0]) - 1;
-    const dayPart = parseInt(datePart[1]);
-    const yearPart = parseInt(datePart[2]);
-    
-    const csvDate = new Date(yearPart, monthPart, dayPart);
-    const minutesPlayed = parseInt(row[2]) || 0; // 🌟 Column C (index 2) for your minutes
-
-    // 2. Check if row entries have playtime during this calendar view month
-    if (
-      csvDate.getFullYear() === year && 
-      csvDate.getMonth() === month && 
-      minutesPlayed > 0
-    ) {
-      playedDates.add(csvDate.getDate());
-    }
+  const rawDate = row[0];
+  const minutesPlayed = parseInt(row[4]) || 0;
+  const date = new Date(rawDate);
+  if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
+    playedDates.add(date.getDate());
   }
 }
+
 
 
 
