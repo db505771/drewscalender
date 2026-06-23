@@ -155,16 +155,12 @@
       title.textContent = `${monthName} ${year}`;
 
       const playedDates = new Set();
-      for (const row of csvRows) {
-        const rawDate = row[0];
-        const minutesPlayed = parseInt(row[4]) || 0; 
-        const date = new Date(rawDate);
-        
-        if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
-          playedDates.add(date.getDate());
-        }
-      }
-
+gameData.forEach(g => {
+  const date = new Date(g.date);
+  if (date.getFullYear() === year && date.getMonth() === month && g.minutes > 0) {
+    playedDates.add(date.getDate());
+  }
+});
       const days = getMonthDays(year, month);
       let htmlString = "";
 
