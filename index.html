@@ -20,20 +20,14 @@
       margin: 0;
       width: 100%;
       height: 100%;
-
-      /* Prevent any native scrolling or bounce effects */
       overflow: hidden; 
-
       background-color: #0f1a2b;
       color: white;
-
       font-family: 'Segoe UI', Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 20px;
-      
-      /* Only allow horizontal panning gestures at the CSS level */
       touch-action: pan-x; 
       box-sizing: border-box;
     }
@@ -81,8 +75,56 @@
       border: 2px solid #00aced;
     }
 
-    .day span {
-      font-size: 20px; 
+    /* CONTAINER TO ALLOW BADGE OVERLAY WITH STRICT BOUNDS */
+    .thumb-wrapper {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      overflow: hidden; 
+    }
+
+    /* LIQUID GLASS STREAK BADGE FLUSH WITH CORNER */
+    .streakBadge {
+      position: absolute;
+      /* 🔥 Positioned exactly at the top right corner */
+      top: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      background: linear-gradient(135deg, rgba(255, 90, 0, 0.9), rgba(255, 0, 128, 0.8));
+      backdrop-filter: blur(4px) saturate(160%);
+      -webkit-backdrop-filter: blur(4px) saturate(160%);
+      border-left: 1px solid rgba(255, 255, 255, 0.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      
+      /* 🔥 Matches the 10px outer radius on the top-right corner, clean look on others */
+      border-radius: 0 10px 0 6px; 
+      
+      padding: 2px 5px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .streakIcon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 10px;
+      height: 10px;
+    }
+
+    .streakIcon svg {
+      width: 100%;
+      height: 100%;
+      fill: #fff;
     }
   </style>
 </head>
@@ -100,17 +142,24 @@
     let gameData = [];
     let currentDate = new Date();
     let isLoading = true;
-    let isPopupOpen = false; // Tracks if a date modal is currently displayed
+    let isPopupOpen = false;
 
-    // Strictly block all vertical page scrolling gestures
     window.addEventListener('touchmove', function(e) {
       if (!isPopupOpen) {
-        // If popup is closed, ensure no vertical layout shifting happens
         if (Math.abs(e.touches[0].clientY) > Math.abs(e.touches[0].clientX)) {
           e.preventDefault();
         }
       }
     }, { passive: false });
+
+    function formatDateKey(dateInput) {
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return "";
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
 
     async function initData() {
       try {
@@ -154,24 +203,21 @@
       
       title.textContent = `${monthName} ${year}`;
 
-const playedDates = new Set();
-for (const row of csvRows) {
-  const rawDate = row[0];
-  const minutesPlayed = parseInt(row[4]) || 0;
-  const date = new Date(rawDate);
-  if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
-    playedDates.add(date.getDate());
-  }
-}
-
-
-
+      const playedDates = new Set();
+      for (const row of csvRows) {
+        const rawDate = row[0];
+        const minutesPlayed = parseInt(row[4]) || 0;
+        const date = new Date(rawDate);
+        if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
+          playedDates.add(date.getDate());
+        }
+      }
 
       const days = getMonthDays(year, month);
       let htmlString = "";
 
-      days.forEach(day => {
-        const dateNum = day.getDate();
+      days.forEach(dayObj => {
+        const dateNum = dayObj.getDate();
         let classes = "day";
 
         if (playedDates.has(dateNum)) {
@@ -199,12 +245,12 @@ for (const row of csvRows) {
     // Swipe handling
     let touchStartX = 0;
     document.addEventListener("touchstart", (e) => { 
-      if (isPopupOpen) return; // Disable swipe start if popup is open
+      if (isPopupOpen) return; 
       touchStartX = e.touches[0].clientX; 
     });
     
     document.addEventListener("touchend", (e) => { 
-      if (isPopupOpen) return; // Disable swipe end if popup is open
+      if (isPopupOpen) return; 
       handleSwipe(touchStartX, e.changedTouches[0].clientX); 
     });
     
@@ -230,7 +276,33 @@ for (const row of csvRows) {
       }
     }
 
-    function showGames(day) {
+    function calculateStreakForDay(gameId, targetDay) {
+      const gameDates = new Set();
+      const targetKey = formatDateKey(targetDay);
+      
+      gameData.forEach(g => {
+        if (g.id === gameId && g.minutes > 0) {
+          const key = formatDateKey(g.date);
+          if (key) gameDates.add(key);
+        }
+      });
+
+      if (!gameDates.has(targetKey)) {
+        return 0;
+      }
+
+      let streak = 0;
+      let loopDate = new Date(targetDay.getTime());
+
+      while (gameDates.has(formatDateKey(loopDate))) {
+        streak++;
+        loopDate.setDate(loopDate.getDate() - 1);
+      }
+
+      return streak;
+    }
+
+    function showGames(selectedDay) {
       const existing = document.getElementById("popup");
       if (existing) {
         existing.remove();
@@ -238,7 +310,6 @@ for (const row of csvRows) {
         return;
       }
 
-      // 🔥 Lock swiping and touch navigation
       isPopupOpen = true;
 
       const popup = document.createElement("div");
@@ -250,8 +321,6 @@ for (const row of csvRows) {
       popup.style.justifyContent = "center";
       popup.style.alignItems = "center";
       popup.style.zIndex = "999";
-      
-      // Allow vertical scroll inside the popup list itself if needed
       popup.style.touchAction = "pan-y"; 
 
       const box = document.createElement("div");
@@ -266,18 +335,21 @@ for (const row of csvRows) {
       box.onclick = (e) => e.stopPropagation();
 
       const title = document.createElement("h2");
-      title.innerText = day.toLocaleDateString();
+      title.innerText = selectedDay.toLocaleDateString();
       box.appendChild(title);
 
-      const filtered = gameData.filter(g => {
-        const d = new Date(g.date);
-        return (
-          d.getDate() === day.getDate() &&
-          d.getMonth() === day.getMonth() &&
-          d.getFullYear() === day.getFullYear() &&
-          g.minutes > 0
-        );
+      const targetDayKey = formatDateKey(selectedDay);
+      const dayGames = gameData.filter(g => formatDateKey(g.date) === targetDayKey && g.minutes > 0);
+
+      const mergedDayGames = {};
+      dayGames.forEach(g => {
+        if (!mergedDayGames[g.id]) {
+          mergedDayGames[g.id] = { ...g, minutes: 0 };
+        }
+        mergedDayGames[g.id].minutes += g.minutes;
       });
+
+      const filtered = Object.values(mergedDayGames);
 
       if (filtered.length === 0) {
         const none = document.createElement("div");
@@ -288,27 +360,46 @@ for (const row of csvRows) {
           const card = document.createElement("div");
           card.style.display = "flex";
           card.style.alignItems = "center";
-          card.style.gap = "10px";
+          card.style.gap = "14px";
           card.style.marginBottom = "12px";
           card.style.background = "#24384f";
           card.style.padding = "10px";
           card.style.borderRadius = "10px";
 
+          const dayStreak = calculateStreakForDay(g.id, selectedDay);
+          let badgeHtml = "";
+          
+          if (dayStreak >= 2) {
+            badgeHtml = `
+              <div class="streakBadge">
+                <span class="streakIcon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M17.66 11.57c-.77-.77-1.9-1.15-2.85-1.43-.87-.25-1.56-.45-1.95-.73-.55-.4-.76-.94-.76-1.57 0-.46.12-.89.37-1.3l.05-.07c.1-.15.14-.32.14-.49 0-.41-.25-.79-.65-.95-.38-.16-.83-.07-1.13.2l-.1.09C9.52 6.55 8.75 8.39 8.75 10c0 .33.02.66.07.98l.04.22c-.67-.47-1.21-1.12-1.55-1.87-.14-.3-.41-.5-.73-.52-.31-.02-.62.11-.8.37C5.3 10.02 5 11.19 5 12.5c0 3.87 3.13 7 7 7s7-3.13 7-7c0-1.28-.35-2.42-.96-3.41-.18-.3-.51-.47-.86-.44-.35.03-.66.24-.78.56-.37.98-.99 1.74-1.74 2.36z"/>
+                  </svg>
+                </span>
+                <span>${dayStreak}</span>
+              </div>
+            `;
+          }
+
           card.innerHTML = `
-            <img
-              src="${g.image}"
-              style="
-                width:60px;
-                height:60px;
-                border-radius:10px;
-                object-fit:cover;
-              "
-            >
+            <div class="thumb-wrapper">
+              ${badgeHtml}
+              <img
+                src="${g.image || ''}"
+                style="
+                  width:60px;
+                  height:60px;
+                  object-fit:cover;
+                  display:block;
+                "
+              >
+            </div>
             <div>
-              <div style="font-weight:bold;">
+              <div style="font-weight:bold; font-size:15px; margin-bottom:2px;">
                 ${g.name}
               </div>
-              <div style="color:#ccc; font-size:14px;">
+              <div style="color:#ccc; font-size:13px;">
                 ${Math.floor(g.minutes / 60)}h ${g.minutes % 60}m played
               </div>
             </div>
@@ -319,7 +410,6 @@ for (const row of csvRows) {
 
       popup.appendChild(box);
       
-      // 🔥 Restore swiping when clicking background to close out
       popup.onclick = () => {
         popup.remove();
         isPopupOpen = false;
