@@ -1,464 +1,417 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta
-  name="viewport"
-  content="
-    width=device-width,
-    initial-scale=1.0,
-    maximum-scale=1.0,
-    user-scalable=no
-  "
-/>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="
+      width=device-width,
+      initial-scale=1.0,
+      maximum-scale=1.0,
+      user-scalable=no
+    "
+  />
 
-<title>Continue Playing</title>
+  <title>Playtime Calendar</title>
 
-<style>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden; 
+      background-color: #0f1a2b;
+      color: white;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      touch-action: pan-x; 
+      box-sizing: border-box;
+    }
 
-html,
-body{
-  margin:0;
-  width:100%;
-  height:100%;
+    h1 {
+      margin-bottom: 20px;
+      text-align: center;
+      width: 100%;
+      user-select: none;
+    }
 
-  overflow:hidden;
+    .calendar-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
 
-  background:#000000;
-  color:white;
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(5, 60px); 
+      gap: 10px;
+      justify-content: center;
+    }
 
-  font-family:Arial, sans-serif;
-}
+    .day {
+      width: 60px; 
+      height: 60px; 
+      background-color: #1a2b3d;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      box-sizing: border-box;
+      user-select: none;
+    }
 
-/* PAGE */
+    .day.played {
+      background-color: #1e824c;
+    }
 
-.page{
-  padding:18px;
-}
+    .day.today {
+      border: 2px solid #00aced;
+    }
 
-/* HEADER */
+    /* LIQUID GLASS STREAK BADGE FOR POPUP CARD */
+    .streakBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      background: linear-gradient(135deg, rgba(255, 90, 0, 0.45), rgba(255, 0, 128, 0.35));
+      backdrop-filter: blur(8px) saturate(160%);
+      -webkit-backdrop-filter: blur(8px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-top: 1px solid rgba(255, 255, 255, 0.55);
+      border-left: 1px solid rgba(255, 255, 255, 0.45);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ffffff;
+      box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.3),
+        0 4px 10px rgba(255, 40, 100, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.4);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
 
-.topBar{
-  display:flex;
-  align-items:center;
-  gap:10px;
+    .streakIcon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 12px;
+    }
 
-  margin-bottom:18px;
-}
-
-.title{
-  font-size:24px;
-  font-weight:700;
-  color:white;
-}
-
-/* TOGGLE */
-
-select{
-  appearance:none;
-  -webkit-appearance:none;
-  -moz-appearance:none;
-
-  background:white;
-  color:black;
-
-  border:none;
-  border-radius:999px;
-
-  height:32px;
-
-  padding:0 14px;
-
-  font-size:13px;
-  font-weight:600;
-
-  text-align:center;
-  text-align-last:center;
-
-  outline:none;
-
-  cursor:pointer;
-
-  flex-shrink:0;
-}
-
-/* GAME ROW */
-
-.gamesRow{
-  display:flex;
-  gap:12px;
-
-  overflow-x:auto;
-  overflow-y:hidden;
-
-  padding-bottom:4px;
-
-  scroll-behavior:smooth;
-
-  -webkit-overflow-scrolling:touch;
-
-  scrollbar-width:none;
-
-  /* 🔥 FIX */
-  touch-action:auto;
-}
-
-.gamesRow::-webkit-scrollbar{
-  display:none;
-}
-
-/* CARD */
-
-.gameCard{
-  width:120px;
-  flex-shrink:0;
-
-  user-select:none;
-  -webkit-user-select:none;
-
-  /* 🔥 FIX */
-  pointer-events:none;
-  
-  /* Required to position the streak badge over the thumbnail */
-  position: relative;
-}
-
-.thumb{
-  width:120px;
-  height:120px;
-
-  border-radius:14px;
-
-  object-fit:cover;
-
-  background:#111;
-
-  user-select:none;
-  -webkit-user-drag:none;
-}
-
-/* LIQUID GLASS STREAK BADGE */
-.streakBadge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  
-  /* Liquid Glass Base */
-  background: linear-gradient(135deg, rgba(255, 90, 0, 0.45), rgba(255, 0, 128, 0.35));
-  backdrop-filter: blur(8px) saturate(160%);
-  -webkit-backdrop-filter: blur(8px) saturate(160%);
-  
-  /* Glass Border & Glossy Highlights */
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-top: 1px solid rgba(255, 255, 255, 0.55);
-  border-left: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 20px;
-  
-  padding: 3px 8px;
-  
-  font-size: 11px;
-  font-weight: 800;
-  color: #ffffff;
-  
-  /* Glow Drop Shadow */
-  box-shadow: 
-    inset 0 1px 1px rgba(255, 255, 255, 0.3),
-    0 4px 10px rgba(255, 40, 100, 0.4),
-    0 1px 3px rgba(0, 0, 0, 0.4);
-    
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  z-index: 2;
-}
-
-.streakIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 12px;
-}
-
-.streakIcon svg {
-  width: 100%;
-  height: 100%;
-  fill: #fff;
-  filter: drop-shadow(0 1px 2px rgba(255, 90, 0, 0.6));
-}
-
-.gameName{
-  margin-top:7px;
-
-  font-size:14px;
-  font-weight:600;
-
-  line-height:1.2;
-
-  color:white;
-
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-
-  overflow:hidden;
-
-  min-height:34px;
-}
-
-.hoursPlayed{
-  margin-top:5px;
-
-  color:white;
-
-  font-size:12px;
-}
-
-/* MOBILE */
-
-@media (max-width:600px){
-
-  .gameCard{
-    width:110px;
-  }
-
-  .thumb{
-    width:110px;
-    height:110px;
-  }
-
-  .gameName{
-    font-size:13px;
-    min-height:32px;
-  }
-
-  .hoursPlayed{
-    font-size:11px;
-  }
-  
-  .streakBadge {
-    top: 5px;
-    right: 5px;
-    padding: 2px 6px;
-    font-size: 10px;
-  }
-  
-  .streakIcon {
-    width: 10px;
-    height: 10px;
-  }
-}
-
-</style>
+    .streakIcon svg {
+      width: 100%;
+      height: 100%;
+      fill: #fff;
+      filter: drop-shadow(0 1px 2px rgba(255, 90, 0, 0.6));
+    }
+  </style>
 </head>
-
 <body>
-
-<div class="page">
-
-  <div class="topBar">
-
-    <div class="title">
-      Top Games Played
-    </div>
-
-    <select id="filter" onchange="changeFilter()">
-      <option value="day">Day</option>
-      <option value="week">Week</option>
-      <option value="month">Month</option>
-      <option value="all">All</option>
-    </select>
-
+  <h1 id="calendar-title">Loading...</h1>
+  <div class="calendar-container">
+    <div class="calendar" id="calendar"></div>
   </div>
 
-  <div
-    class="gamesRow"
-    id="gamesRow"
-  ></div>
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRo-SarpignS39lDSaIGsV13WyUJOURcyVaRP_mEqY6XfBxby9WA_XCf5AhXi8OcwHDiP4FLqBwMGKw/pub?output=csv";
+    const gameApi = "https://script.google.com/macros/s/AKfycby5tKKny4hqGyG--JQxP4IVe2C8WWGO6sMij6p66MdSmLFVDUn6TbeBbM2L51TdWia_/exec";
 
-</div>
+    let csvRows = [];
+    let gameData = [];
+    let currentDate = new Date();
+    let isLoading = true;
+    let isPopupOpen = false;
 
-<script>
-
-const API = "https://script.google.com/macros/s/AKfycbzcX9WsRdeEdz1ziWq4CbuUwa_WwxxUGPI1YtMTvYIHZGZ4cBus_p7qXdIIiFW_0hu_/exec";
-
-let games = [];
-
-// ⚡ Load instantly from local storage cache if it exists
-const cachedData = localStorage.getItem("roblox_games_cache");
-if (cachedData) {
-  try {
-    games = JSON.parse(cachedData);
-    renderGames();
-  } catch(e) {}
-}
-
-async function loadGames(){
-  try {
-    const res = await fetch(API);
-    games = await res.json();
-    
-    // Update cache with fresh data
-    localStorage.setItem("roblox_games_cache", JSON.stringify(games));
-    
-    renderGames();
-  } catch (err) {
-    console.error("Failed to fetch game data:", err);
-  }
-}
-
-function changeFilter(){
-  const row = document.getElementById("gamesRow");
-  row.scrollLeft = 0;
-  renderGames();
-}
-
-function renderGames(){
-  const row = document.getElementById("gamesRow");
-  const filter = document.getElementById("filter").value;
-  const now = new Date();
-  
-  // Set up today string comparison helper
-  const todayStr = now.toDateString();
-
-  let filtered = games.filter(g => {
-    const d = new Date(g.date);
-    const diff = (now - d) / (1000 * 60 * 60 * 24);
-
-    if(filter === "day"){
-      return (
-        d.getDate() === now.getDate() &&
-        d.getMonth() === now.getMonth() &&
-        d.getFullYear() === now.getFullYear()
-      );
-    }
-
-    if(filter === "week"){
-      return diff <= 7;
-    }
-
-    if(filter === "month"){
-      return diff <= 30;
-    }
-
-    return true;
-  });
-
-  // Calculate consecutive active daily streaks per unique game ID from raw historical logs
-  const streakMapping = {};
-  
-  // Group dates by game ID and sort them chronologically
-  const gameDates = {};
-  games.forEach(g => {
-    if(!gameDates[g.id]) gameDates[g.id] = new Set();
-    // Use local date string to ignore hours/minutes/seconds mismatches
-    gameDates[g.id].add(new Date(g.date).toDateString());
-  });
-
-  Object.keys(gameDates).forEach(id => {
-    // Convert Set back to an array of sorted unique timestamps
-    const sortedDates = Array.from(gameDates[id]).map(d => new Date(d)).sort((a, b) => b - a);
-    
-    let streak = 0;
-    let expectedDate = new Date(todayStr); // Start checking backward from today
-    
-    // Check if the game was played today or yesterday to see if a streak is active
-    const hasPlayedToday = sortedDates.some(d => d.toDateString() === todayStr);
-    
-    let yesterday = new Date(todayStr);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const hasPlayedYesterday = sortedDates.some(d => d.toDateString() === yesterday.toDateString());
-    
-    if (hasPlayedToday || hasPlayedYesterday) {
-      // If they didn't play today but did yesterday, start calculations from yesterday
-      if (!hasPlayedToday && hasPlayedYesterday) {
-        expectedDate = yesterday;
-      }
-      
-      // Count backwards for consecutive days matching
-      for (let i = 0; i < sortedDates.length; i++) {
-        if (sortedDates[i].toDateString() === expectedDate.toDateString()) {
-          streak++;
-          // Shift expected target date back by 1 calendar day
-          expectedDate.setDate(expectedDate.getDate() - 1);
-        } else if (sortedDates[i] < expectedDate) {
-          // Found a missing day, streak breaks here
-          break;
+    window.addEventListener('touchmove', function(e) {
+      if (!isPopupOpen) {
+        if (Math.abs(e.touches[0].clientY) > Math.abs(e.touches[0].clientX)) {
+          e.preventDefault();
         }
       }
-    }
-    streakMapping[id] = streak;
-  });
+    }, { passive: false });
 
-  // MERGE DUPLICATES FOR CURRENT FILTER VIEW
-  const merged = {};
-  filtered.forEach(g => {
-    if(!merged[g.id]){
-      merged[g.id] = {
-        ...g,
-        minutes:0
+    // Helper function to turn any date object or string into a standardized local 'YYYY-MM-DD'
+    function formatDateKey(dateInput) {
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return "";
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    async function initData() {
+      try {
+        const [csvRes, apiRes] = await Promise.all([
+          fetch(csvUrl).then(res => res.text()),
+          fetch(gameApi).then(res => res.json())
+        ]);
+
+        csvRows = csvRes.trim().split("\n").slice(1).map(row => row.split(","));
+        gameData = apiRes;
+        
+        isLoading = false;
+        buildCalendar();
+      } catch (e) {
+        document.getElementById("calendar-title").textContent = "Error Loading Data";
+        console.error(e);
+      }
+    }
+
+    function getMonthDays(year, month) {
+      const date = new Date(year, month, 1);
+      const days = [];
+      while (date.getMonth() === month) {
+        days.push(new Date(date));
+        date.setDate(date.getDate() + 1);
+      }
+      return days;
+    }
+
+    function buildCalendar() {
+      if (isLoading) return;
+
+      const calendar = document.getElementById("calendar");
+      const title = document.getElementById("calendar-title");
+
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const today = new Date();
+      const isCurrentMonth = (month === today.getMonth() && year === today.getFullYear());
+      const monthName = currentDate.toLocaleString("default", { month: "long" });
+      
+      title.textContent = `${monthName} ${year}`;
+
+      const playedDates = new Set();
+      for (const row of csvRows) {
+        const rawDate = row[0];
+        const minutesPlayed = parseInt(row[4]) || 0;
+        const date = new Date(rawDate);
+        if (date.getFullYear() === year && date.getMonth() === month && minutesPlayed > 0) {
+          playedDates.add(date.getDate());
+        }
+      }
+
+      const days = getMonthDays(year, month);
+      let htmlString = "";
+
+      days.forEach(day => {
+        const dateNum = day.getDate();
+        let classes = "day";
+
+        if (playedDates.has(dateNum)) {
+          classes += " played";
+        }
+        if (isCurrentMonth && dateNum === today.getDate()) {
+          classes += " today";
+        }
+
+        htmlString += `
+          <div class="${classes}" onclick="showGamesByDay(${dateNum})">
+            ${dateNum}<span></span>
+          </div>
+        `;
+      });
+
+      calendar.innerHTML = htmlString;
+    }
+
+    function showGamesByDay(dateNum) {
+      const selectedDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), dateNum);
+      showGames(selectedDay);
+    }
+
+    // Swipe handling
+    let touchStartX = 0;
+    document.addEventListener("touchstart", (e) => { 
+      if (isPopupOpen) return; 
+      touchStartX = e.touches[0].clientX; 
+    });
+    
+    document.addEventListener("touchend", (e) => { 
+      if (isPopupOpen) return; 
+      handleSwipe(touchStartX, e.changedTouches[0].clientX); 
+    });
+    
+    document.addEventListener("mousedown", (e) => { 
+      if (isPopupOpen) return; 
+      touchStartX = e.clientX; 
+    });
+    
+    document.addEventListener("mouseup", (e) => { 
+      if (isPopupOpen) return; 
+      handleSwipe(touchStartX, e.clientX); 
+    });
+
+    function handleSwipe(startX, endX) {
+      const diff = startX - endX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        } else {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+        }
+        buildCalendar();
+      }
+    }
+
+    function calculateStreakForDay(gameId, targetDay) {
+      const gameDates = new Set();
+      const targetKey = formatDateKey(targetDay);
+      
+      // Collect all formatting keys where this game had playtime
+      gameData.forEach(g => {
+        if (g.id === gameId && g.minutes > 0) {
+          const key = formatDateKey(g.date);
+          if (key) gameDates.add(key);
+        }
+      });
+
+      // If the game wasn't even played on the selected day, the streak is 0
+      if (!gameDates.has(targetKey)) {
+        return 0;
+      }
+
+      let streak = 0;
+      let loopDate = new Date(targetDay.getTime()); // Clone the date completely
+
+      // Walk backward one day at a time from the selected target day
+      while (gameDates.has(formatDateKey(loopDate))) {
+        streak++;
+        loopDate.setDate(loopDate.getDate() - 1);
+      }
+
+      return streak;
+    }
+
+    function showGames(day) {
+      const existing = document.getElementById("popup");
+      if (existing) {
+        existing.remove();
+        isPopupOpen = false;
+        return;
+      }
+
+      isPopupOpen = true;
+
+      const popup = document.createElement("div");
+      popup.id = "popup";
+      popup.style.position = "fixed";
+      popup.style.inset = "0";
+      popup.style.background = "rgba(0,0,0,0.7)";
+      popup.style.display = "flex";
+      popup.style.justifyContent = "center";
+      popup.style.alignItems = "center";
+      popup.style.zIndex = "999";
+      popup.style.touchAction = "pan-y"; 
+
+      const box = document.createElement("div");
+      box.style.background = "#1a2b3d";
+      box.style.padding = "20px";
+      box.style.borderRadius = "12px";
+      box.style.width = "90%";
+      box.style.maxWidth = "400px";
+      box.style.maxHeight = "70vh";
+      box.style.overflowY = "auto";
+
+      box.onclick = (e) => e.stopPropagation();
+
+      const title = document.createElement("h2");
+      title.innerText = day.toLocaleDateString();
+      box.appendChild(title);
+
+      const targetDayKey = formatDateKey(day);
+      
+      // Filter logs matching the target day
+      const dayGames = gameData.filter(g => formatDateKey(g.date) === targetDayKey && g.minutes > 0);
+
+      // Merge duplicate entries for the same game on this exact day
+      const mergedDayGames = {};
+      dayGames.forEach(g => {
+        if (!mergedDayGames[g.id]) {
+          mergedDayGames[g.id] = { ...g, minutes: 0 };
+        }
+        mergedDayGames[g.id].minutes += g.minutes;
+      });
+
+      const filtered = Object.values(mergedDayGames);
+
+      if (filtered.length === 0) {
+        const none = document.createElement("div");
+        none.innerText = "No games found.";
+        box.appendChild(none);
+      } else {
+        filtered.forEach(g => {
+          const card = document.createElement("div");
+          card.style.display = "flex";
+          card.style.alignItems = "center";
+          card.style.gap = "10px";
+          card.style.marginBottom = "12px";
+          card.style.background = "#24384f";
+          card.style.padding = "10px";
+          card.style.borderRadius = "10px";
+
+          // Compute consecutive days leading up to this calendar page item
+          const dayStreak = calculateStreakForDay(g.id, day);
+          let badgeHtml = "";
+          
+          if (dayStreak >= 2) {
+            badgeHtml = `
+              <div class="streakBadge">
+                <span class="streakIcon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M17.66 11.57c-.77-.77-1.9-1.15-2.85-1.43-.87-.25-1.56-.45-1.95-.73-.55-.4-.76-.94-.76-1.57 0-.46.12-.89.37-1.3l.05-.07c.1-.15.14-.32.14-.49 0-.41-.25-.79-.65-.95-.38-.16-.83-.07-1.13.2l-.1.09C9.52 6.55 8.75 8.39 8.75 10c0 .33.02.66.07.98l.04.22c-.67-.47-1.21-1.12-1.55-1.87-.14-.3-.41-.5-.73-.52-.31-.02-.62.11-.8.37C5.3 10.02 5 11.19 5 12.5c0 3.87 3.13 7 7 7s7-3.13 7-7c0-1.28-.35-2.42-.96-3.41-.18-.3-.51-.47-.86-.44-.35.03-.66.24-.78.56-.37.98-.99 1.74-1.74 2.36z"/>
+                  </svg>
+                </span>
+                <span>${dayStreak} day streak</span>
+              </div>
+            `;
+          }
+
+          card.innerHTML = `
+            <img
+              src="${g.image || ''}"
+              style="
+                width:60px;
+                height:60px;
+                border-radius:10px;
+                object-fit:cover;
+              "
+            >
+            <div>
+              <div style="font-weight:bold;">
+                ${g.name}
+              </div>
+              <div style="color:#ccc; font-size:14px;">
+                ${Math.floor(g.minutes / 60)}h ${g.minutes % 60}m played
+              </div>
+              ${badgeHtml}
+            </div>
+          `;
+          box.appendChild(card);
+        });
+      }
+
+      popup.appendChild(box);
+      
+      popup.onclick = () => {
+        popup.remove();
+        isPopupOpen = false;
       };
-    }
-    merged[g.id].minutes += g.minutes;
-  });
-
-  filtered = Object.values(merged);
-  filtered.sort((a,b) => b.minutes - a.minutes);
-
-  // ⚡ BATCH DOM DISPLAY
-  let htmlString = "";
-
-  filtered.forEach(g => {
-    const hours = Math.floor(g.minutes / 60);
-    const mins = g.minutes % 60;
-    
-    // Fetch computed consecutive days count
-    const consecutiveStreak = streakMapping[g.id] || 0;
-    
-    // Only generate HTML badge if streak metric is 2 or up
-    let badgeHtml = "";
-    if (consecutiveStreak >= 2) {
-      badgeHtml = `
-        <div class="streakBadge">
-          <span class="streakIcon">
-            <svg viewBox="0 0 24 24">
-              <path d="M17.66 11.57c-.77-.77-1.9-1.15-2.85-1.43-.87-.25-1.56-.45-1.95-.73-.55-.4-.76-.94-.76-1.57 0-.46.12-.89.37-1.3l.05-.07c.1-.15.14-.32.14-.49 0-.41-.25-.79-.65-.95-.38-.16-.83-.07-1.13.2l-.1.09C9.52 6.55 8.75 8.39 8.75 10c0 .33.02.66.07.98l.04.22c-.67-.47-1.21-1.12-1.55-1.87-.14-.3-.41-.5-.73-.52-.31-.02-.62.11-.8.37C5.3 10.02 5 11.19 5 12.5c0 3.87 3.13 7 7 7s7-3.13 7-7c0-1.28-.35-2.42-.96-3.41-.18-.3-.51-.47-.86-.44-.35.03-.66.24-.78.56-.37.98-.99 1.74-1.74 2.36z"/>
-            </svg>
-          </span>
-          <span>${consecutiveStreak}</span>
-        </div>
-      `;
+      
+      document.body.appendChild(popup);
     }
 
-    htmlString += `
-      <div class="gameCard">
-        ${badgeHtml}
-        <img
-          class="thumb"
-          draggable="false"
-          src="${g.image || ''}"
-          alt=""
-        >
-        <div class="gameName">
-          ${g.name}
-        </div>
-        <div class="hoursPlayed">
-          ${hours}h ${mins}m
-        </div>
-      </div>
-    `;
-  });
-
-  // Write everything to the screen exactly once
-  row.innerHTML = htmlString || '<div style="color: #666; font-size: 14px; padding: 10px;">No history found.</div>';
-}
-
-loadGames();
-setInterval(loadGames, 60000);
-
-</script>
-
+    initData();
+  </script>
 </body>
 </html>
