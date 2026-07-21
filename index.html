@@ -21,7 +21,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden; 
-      background-color: #0f1a2b;
+      background-color: transparent; /* Made background transparent */
       color: white;
       font-family: 'Segoe UI', Arial, sans-serif;
       display: flex;
@@ -55,7 +55,7 @@
     .day {
       width: 60px; 
       height: 60px; 
-      background-color: #1a2b3d;
+      background-color: rgba(26, 43, 61, 0.4); /* Glass translucent background */
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -65,10 +65,11 @@
       cursor: pointer;
       box-sizing: border-box;
       user-select: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .day.played {
-      background-color: #1e824c;
+      background-color: rgba(30, 130, 76, 0.7);
     }
 
     .day.today {
@@ -139,7 +140,6 @@
       }
     }, { passive: false });
 
-    // Helper function to turn any date object or string into a standardized local 'YYYY-MM-DD'
     function formatDateKey(dateInput) {
       const d = new Date(dateInput);
       if (isNaN(d.getTime())) return "";
@@ -230,7 +230,6 @@
       showGames(selectedDay);
     }
 
-    // Swipe handling
     let touchStartX = 0;
     document.addEventListener("touchstart", (e) => { 
       if (isPopupOpen) return; 
@@ -268,7 +267,6 @@
       const gameDates = new Set();
       const targetKey = formatDateKey(targetDay);
       
-      // Collect all formatting keys where this game had playtime
       gameData.forEach(g => {
         if (g.id === gameId && g.minutes > 0) {
           const key = formatDateKey(g.date);
@@ -276,15 +274,13 @@
         }
       });
 
-      // If the game wasn't even played on the selected day, the streak is 0
       if (!gameDates.has(targetKey)) {
         return 0;
       }
 
       let streak = 0;
-      let loopDate = new Date(targetDay.getTime()); // Clone the date completely
+      let loopDate = new Date(targetDay.getTime());
 
-      // Walk backward one day at a time from the selected target day
       while (gameDates.has(formatDateKey(loopDate))) {
         streak++;
         loopDate.setDate(loopDate.getDate() - 1);
@@ -315,7 +311,9 @@
       popup.style.touchAction = "pan-y"; 
 
       const box = document.createElement("div");
-      box.style.background = "#1a2b3d";
+      box.style.background = "rgba(26, 43, 61, 0.95)";
+      box.style.backdropFilter = "blur(12px)";
+      box.style.border = "1px solid rgba(255,255,255,0.15)";
       box.style.padding = "20px";
       box.style.borderRadius = "12px";
       box.style.width = "90%";
@@ -330,11 +328,8 @@
       box.appendChild(title);
 
       const targetDayKey = formatDateKey(day);
-      
-      // Filter logs matching the target day
       const dayGames = gameData.filter(g => formatDateKey(g.date) === targetDayKey && g.minutes > 0);
 
-      // Merge duplicate entries for the same game on this exact day
       const mergedDayGames = {};
       dayGames.forEach(g => {
         if (!mergedDayGames[g.id]) {
@@ -356,11 +351,10 @@
           card.style.alignItems = "center";
           card.style.gap = "10px";
           card.style.marginBottom = "12px";
-          card.style.background = "#24384f";
+          card.style.background = "rgba(36, 56, 79, 0.6)";
           card.style.padding = "10px";
           card.style.borderRadius = "10px";
 
-          // Compute consecutive days leading up to this calendar page item
           const dayStreak = calculateStreakForDay(g.id, day);
           let badgeHtml = "";
           
